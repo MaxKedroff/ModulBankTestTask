@@ -1,0 +1,58 @@
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.vspscc
+*.vssscc
+_ReSharper.Cache/
+*.sln.ide
+
+# Build output
+bin/
+obj/
+out/
+publish/
+*.dll
+*.exe
+*.pdb
+*.so
+*.dylib
+
+# NuGet packages
+packages/
+*.nupkg
+*.snupkg
+*.nuget.props
+*.nuget.targets
+
+# User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+
+# Rider
+.idea/
+*.sln.iml
+
+# Logs
+logs/
+*.log
+*.cache
+
+# Backup files
+*~
+*.bak
+*.tmp
+
+# OS files
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# Application files
+appsettings.Development.json
+appsettings.Staging.json
+*.local.json
+*.local.db
