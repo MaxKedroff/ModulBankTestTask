@@ -12,6 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\CandidateService.Application\CandidateService.Application.csproj" />
     <ProjectReference Include="..\CandidateService.Domain\CandidateService.Domain.csproj" />
   </ItemGroup>
 

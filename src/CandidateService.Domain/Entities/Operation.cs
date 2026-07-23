@@ -9,12 +9,12 @@ namespace CandidateService.Domain.Entities
         public string Currency { get; private set; }
         public string Description { get; private set; }
         public OperationStatus Status { get; private set; }
-        public string? ProviderPaymentId { get; private set; }
+        public string? ProviderPaymentId { get; set; }
         public DateTime CreatedAt { get; private set; }
         public DateTime? UpdatedAt { get; private set; }
         public int RetryCount { get; private set; }
         public DateTime? NextRetryAt { get; private set; }
-        public bool IsProcessing { get; private set; }
+        public bool IsProcessing { get; set; }
         public List<OperationEvent> Events { get; private set; }
 
         public Operation(string id, decimal amount, string currency, string description)
@@ -77,6 +77,12 @@ namespace CandidateService.Domain.Entities
         {
             RetryCount++;
             NextRetryAt = CalculateNextRetryTime();
+            UpdatedAt = DateTime.UtcNow;
+        }
+
+        public void ResetProcessing()
+        {
+            IsProcessing = false;
             UpdatedAt = DateTime.UtcNow;
         }
 
