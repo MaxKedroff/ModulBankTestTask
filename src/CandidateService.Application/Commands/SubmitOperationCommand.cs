@@ -26,14 +26,17 @@ namespace CandidateService.Application.Commands
     {
         private readonly IOperationRepository _repository;
         private readonly ILogger<SubmitOperationCommandHandler> _logger;
+        private readonly IMetricsService _metricsService;
         private readonly IBackgroundTaskQueue _backgroundTaskQueue;
 
 
         public SubmitOperationCommandHandler(
+        IMetricsService metricsService,
         IOperationRepository repository,
         IBackgroundTaskQueue backgroundTaskQueue,
         ILogger<SubmitOperationCommandHandler> logger)
         {
+            _metricsService = metricsService;
             _repository = repository;
             _backgroundTaskQueue = backgroundTaskQueue;
             _logger = logger;
@@ -54,6 +57,7 @@ namespace CandidateService.Application.Commands
                 {
                     operation.MarkAsProcessing();
                     await _repository.UpdateAsync(operation);
+                    _metricsService.IncrementOperationSubmitted();
                     _backgroundTaskQueue.QueueBackgroundWorkItem(async (serviceProvider, token) =>
                     {
                         await ProcessOperationAsync(serviceProvider, operation.Id, token);
@@ -111,6 +115,8 @@ namespace CandidateService.Application.Commands
                 var repository = serviceProvider.GetRequiredService<IOperationRepository>();
                 var providerService = serviceProvider.GetRequiredService<IProviderService>();
                 var backgroundQueue = serviceProvider.GetRequiredService<IBackgroundTaskQueue>();
+                var metricsService = serviceProvider.GetRequiredService<IMetricsService>();
+
 
                 logger.LogInformation("Getting operation {OperationId} from repository", operationId);
                 var operation = await repository.GetByIdAsync(operationId);
@@ -161,6 +167,7 @@ namespace CandidateService.Application.Commands
                 {
                     logger.LogWarning("Provider request failed for operation {OperationId}. Scheduling retry #{RetryCount}",
                         operationId, operation.RetryCount + 1);
+                    metricsService.IncrementProviderRetry();
 
                     operation.MarkRetryScheduled();
                     operation.ResetProcessing();

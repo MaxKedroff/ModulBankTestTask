@@ -5,6 +5,7 @@ using CandidateService.Domain.Interfaces;
 using Microsoft.Extensions.Logging;
 using CandidateService.Domain.Entities;
 using CandidateService.Application.Exceptions;
+using CandidateService.Application.Interfaces;
 
 
 namespace CandidateService.Application.Commands
@@ -43,10 +44,12 @@ namespace CandidateService.Application.Commands
         {
             private readonly IOperationRepository _repository;
             private readonly ILogger<CreateOperationCommandHandler> _logger;
+            private readonly IMetricsService _metricsService;
 
-            public CreateOperationCommandHandler(IOperationRepository repository, ILogger<CreateOperationCommandHandler> logger)
+            public CreateOperationCommandHandler(IOperationRepository repository, ILogger<CreateOperationCommandHandler> logger, IMetricsService metricsService)
             {
                 _repository = repository;
+                _metricsService = metricsService;
                 _logger = logger;
             }
 
@@ -70,6 +73,8 @@ namespace CandidateService.Application.Commands
                     operation.Id,
                     operation.Amount
                 );
+
+                _metricsService.IncrementOperationCreated();
 
                 return MapToResponse(operation);
             }

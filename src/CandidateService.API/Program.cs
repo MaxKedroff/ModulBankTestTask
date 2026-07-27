@@ -7,6 +7,9 @@ using CandidateService.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 
+using AppMetrics = Microsoft.Extensions.DependencyInjection.AppMetricsServiceCollectionExtensions;
+
+
 var builder = WebApplication.CreateBuilder(args);
 
 Log.Logger = new LoggerConfiguration()
@@ -45,6 +48,13 @@ builder.Services.AddScoped<SubmitOperationCommandHandler>();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
+AppMetrics.AddMetrics(builder.Services); 
+builder.Services.AddMetricsTrackingMiddleware();
+builder.Services.AddMetricsEndpoints();
+
+builder.Services.AddScoped<IMetricsService, MetricsService>();
+
+
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
@@ -63,6 +73,8 @@ if (app.Environment.IsDevelopment())
 
 app.UseExceptionHandler();
 app.UseRouting();
+app.UseMetricsAllMiddleware();
+app.UseMetricsAllEndpoints();
 app.MapControllers();
 
 app.Lifetime.ApplicationStopping.Register(() =>
