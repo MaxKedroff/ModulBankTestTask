@@ -4,6 +4,7 @@ using FluentValidation;
 using CandidateService.Domain.Interfaces;
 using Microsoft.Extensions.Logging;
 using CandidateService.Domain.Entities;
+using CandidateService.Application.Exceptions;
 
 
 namespace CandidateService.Application.Commands

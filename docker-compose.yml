@@ -1,0 +1,36 @@
+services:
+  candidate-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - PROVIDER_URL=http://provider-simulator:8081
+      - ASPNETCORE_URLS=http://+:8080
+      - ASPNETCORE_ENVIRONMENT=Production
+    ports:
+      - "8080:8080"
+    volumes:
+      - candidate-data:/data
+    networks:
+      - service-network
+    restart: unless-stopped
+
+  provider-simulator:
+    image: ghcr.io/fintech-dev-lab/internship-provider-simulator:v0.2.0
+    environment:
+      - CALLBACK_URL=http://candidate-service:8080/api/receipts
+    ports:
+      - "8081:8081"
+    depends_on:
+      - candidate-service
+    networks:
+      - service-network
+    restart: unless-stopped
+
+networks:
+  service-network:
+    driver: bridge
+
+volumes:
+  candidate-data:
+    driver: local

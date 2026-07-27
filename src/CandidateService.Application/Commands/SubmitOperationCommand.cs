@@ -1,4 +1,5 @@
 ﻿using CandidateService.Application.DTOs;
+using CandidateService.Application.Exceptions;
 using CandidateService.Application.Interfaces;
 using CandidateService.Domain.Entities;
 using CandidateService.Domain.Enums;
@@ -81,7 +82,7 @@ namespace CandidateService.Application.Commands
             };
         }
 
-        private async Task ProcessOperationAsync(IServiceProvider serviceProvider, string operationId, CancellationToken token)
+        public async Task ProcessOperationAsync(IServiceProvider serviceProvider, string operationId, CancellationToken token)
         {
             using var scope = serviceProvider.CreateScope();
             var repository = scope.ServiceProvider.GetRequiredService<IOperationRepository>();
