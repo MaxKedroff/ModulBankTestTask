@@ -1,4 +1,5 @@
-﻿using CandidateService.Application.Exceptions;
+﻿using CandidateService.Application.Commands;
+using CandidateService.Application.Exceptions;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 

@@ -1,6 +1,7 @@
 ﻿using CandidateService.Application.Commands;
 using CandidateService.Application.DTOs;
 using CandidateService.Application.Exceptions;
+using CandidateService.Application.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 

@@ -6,7 +6,7 @@ services:
     environment:
       - PROVIDER_URL=http://provider-simulator:8081
       - ASPNETCORE_URLS=http://+:8080
-      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_ENVIRONMENT=Development
     ports:
       - "8080:8080"
     volumes:

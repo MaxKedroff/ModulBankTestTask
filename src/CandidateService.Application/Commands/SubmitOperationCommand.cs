@@ -7,7 +7,6 @@ using CandidateService.Domain.Interfaces;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using System;
 
 namespace CandidateService.Application.Commands
 {
@@ -84,15 +83,32 @@ namespace CandidateService.Application.Commands
 
         public async Task ProcessOperationAsync(IServiceProvider serviceProvider, string operationId, CancellationToken token)
         {
-            using var scope = serviceProvider.CreateScope();
-            var repository = scope.ServiceProvider.GetRequiredService<IOperationRepository>();
-            var providerService = scope.ServiceProvider.GetRequiredService<IProviderService>();
-            var logger = scope.ServiceProvider.GetRequiredService<ILogger<SubmitOperationCommandHandler>>();
+            var logger = serviceProvider.GetRequiredService<ILogger<SubmitOperationCommandHandler>>();
+
             try
             {
+                logger.LogInformation("=== START ProcessOperationAsync for {OperationId} ===", operationId);
+
+                var repository = serviceProvider.GetRequiredService<IOperationRepository>();
+                var providerService = serviceProvider.GetRequiredService<IProviderService>();
+                var backgroundQueue = serviceProvider.GetRequiredService<IBackgroundTaskQueue>();
+
+                logger.LogInformation("Getting operation {OperationId} from repository", operationId);
                 var operation = await repository.GetByIdAsync(operationId);
-                if (operation == null || operation.Status != OperationStatus.PROCESSING)
+
+                if (operation == null)
                 {
+                    logger.LogWarning("Operation {OperationId} not found", operationId);
+                    return;
+                }
+
+                logger.LogInformation("Operation {OperationId} found. Status: {Status}, IsProcessing: {IsProcessing}",
+                    operationId, operation.Status, operation.IsProcessing);
+
+                if (operation.Status != OperationStatus.PROCESSING)
+                {
+                    logger.LogWarning("Operation {OperationId} is not in PROCESSING state. Current status: {Status}",
+                        operationId, operation.Status);
                     return;
                 }
 
@@ -102,67 +118,82 @@ namespace CandidateService.Application.Commands
                     return;
                 }
 
+                logger.LogInformation("Marking operation {OperationId} as processing", operationId);
                 operation.IsProcessing = true;
                 await repository.UpdateAsync(operation);
+
+                logger.LogInformation("Sending request to provider for operation {OperationId}", operationId);
                 var response = await providerService.SendPaymentAsync(operation);
+
+                logger.LogInformation("Provider response received for operation {OperationId}. Success: {Success}, ProviderPaymentId: {ProviderPaymentId}, StatusCode: {StatusCode}",
+                    operationId, response.Success, response.ProviderPaymentId, response.StatusCode);
+
                 if (response.Success && !string.IsNullOrEmpty(response.ProviderPaymentId))
                 {
+                    logger.LogInformation("Provider accepted payment for operation {OperationId}. ProviderPaymentId: {ProviderPaymentId}",
+                        operationId, response.ProviderPaymentId);
+
                     operation.ProviderPaymentId ??= response.ProviderPaymentId;
                     operation.ResetProcessing();
                     await repository.UpdateAsync(operation);
-                    logger.LogInformation(
-                    "Provider accepted payment for operation {OperationId}. ProviderPaymentId: {ProviderPaymentId}",
-                    operationId,
-                    response.ProviderPaymentId
-                    );
+                    logger.LogInformation("Operation {OperationId} updated successfully", operationId);
                 }
                 else if (response.StatusCode == 0 || response.StatusCode >= 500)
                 {
+                    logger.LogWarning("Provider request failed for operation {OperationId}. Scheduling retry #{RetryCount}",
+                        operationId, operation.RetryCount + 1);
+
                     operation.MarkRetryScheduled();
                     operation.ResetProcessing();
                     await repository.UpdateAsync(operation);
 
-                    _backgroundTaskQueue.QueueBackgroundWorkItem(async (sp, ct) =>
+                    backgroundQueue.QueueBackgroundWorkItem(async (sp, ct) =>
                     {
-                        await ProcessOperationAsync(sp, operationId, ct);
+                        using var taskScope = sp.CreateScope();
+                        var handler = taskScope.ServiceProvider.GetRequiredService<SubmitOperationCommandHandler>();
+                        await handler.ProcessOperationAsync(taskScope.ServiceProvider, operationId, ct);
                     });
 
-                    logger.LogWarning(
-                    "Provider request failed for operation {OperationId}. Scheduled retry #{RetryCount} at {NextRetryAt}",
-                    operationId,
-                    operation.RetryCount,
-                    operation.NextRetryAt
-                    );
+                    logger.LogInformation("Retry scheduled for operation {OperationId} at {NextRetryAt}",
+                        operationId, operation.NextRetryAt);
                 }
                 else
                 {
+                    logger.LogError("Provider returned client error for operation {OperationId}. Status: {StatusCode}",
+                        operationId, response.StatusCode);
+
                     operation.ResetProcessing();
                     await repository.UpdateAsync(operation);
-                    logger.LogError(
-                    "Provider returned client error for operation {OperationId}. Status: {StatusCode}",
-                    operationId,
-                    response.StatusCode
-                    );
                 }
+
+                logger.LogInformation("=== END ProcessOperationAsync for {OperationId} ===", operationId);
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Error processing operation {OperationId}", operationId);
+                logger.LogError(ex, "=== ERROR in ProcessOperationAsync for {OperationId} ===", operationId);
+
                 try
                 {
+                    var repository = serviceProvider.GetRequiredService<IOperationRepository>();
+                    var backgroundQueue = serviceProvider.GetRequiredService<IBackgroundTaskQueue>();
+
                     var operation = await repository.GetByIdAsync(operationId);
                     if (operation != null)
                     {
+                        logger.LogInformation("Recovering operation {OperationId} after error", operationId);
                         operation.ResetProcessing();
                         operation.MarkRetryScheduled();
                         await repository.UpdateAsync(operation);
 
-                        _backgroundTaskQueue.QueueBackgroundWorkItem(async (sp, ct) =>
+                        backgroundQueue.QueueBackgroundWorkItem(async (sp, ct) =>
                         {
-                            await ProcessOperationAsync(sp, operationId, ct);
+                            using var taskScope = sp.CreateScope();
+                            var handler = taskScope.ServiceProvider.GetRequiredService<SubmitOperationCommandHandler>();
+                            await handler.ProcessOperationAsync(taskScope.ServiceProvider, operationId, ct);
                         });
                     }
-                }catch (Exception innerEx)
+                }
+                catch (Exception innerEx)
                 {
                     logger.LogError(innerEx, "Failed to handle error for operation {OperationId}", operationId);
                 }

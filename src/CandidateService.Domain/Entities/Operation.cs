@@ -39,7 +39,6 @@ namespace CandidateService.Domain.Entities
 
             Status = OperationStatus.PROCESSING;
             UpdatedAt = DateTime.UtcNow;
-            IsProcessing = true;
             AddEvent(OperationStatus.PROCESSING, OperationStatus.CREATED, "Processing started");
         }
 
@@ -95,7 +94,7 @@ namespace CandidateService.Domain.Entities
 
         private void AddEvent(OperationStatus toStatus, OperationStatus? fromStatus, string message)
         {
-            var eventId = Events.Count + 1;
+            var eventId = Events.Any() ? Events.Max(e => e.EventId) + 1 : 1;
             Events.Add(new OperationEvent(eventId, toStatus, fromStatus, message, DateTime.UtcNow));
         }
     }

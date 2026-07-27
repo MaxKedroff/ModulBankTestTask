@@ -65,7 +65,7 @@ namespace CandidateService.Infrastructure.Services
 
             try
             {
-                var requestMessage = new HttpRequestMessage(HttpMethod.Post, "")
+                var requestMessage = new HttpRequestMessage(HttpMethod.Post, "/payments")
                 {
                     Content = content
                 };

@@ -11,6 +11,9 @@ namespace CandidateService.Domain.Entities
         public string Message { get; private set; }
         public DateTime OccurredAt { get; private set; }
 
+        private OperationEvent() { }
+
+
         public OperationEvent(int eventId, OperationStatus toStatus, OperationStatus? fromStatus, string message, DateTime occurredAt)
         {
             EventId = eventId;
