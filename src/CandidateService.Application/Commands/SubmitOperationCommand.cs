@@ -5,6 +5,7 @@ using CandidateService.Domain.Entities;
 using CandidateService.Domain.Enums;
 using CandidateService.Domain.Interfaces;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -49,23 +50,41 @@ namespace CandidateService.Application.Commands
 
             if (operation.Status == OperationStatus.CREATED)
             {
-                operation.MarkAsProcessing();
-                await _repository.UpdateAsync(operation);
-                _backgroundTaskQueue.QueueBackgroundWorkItem(async (serviceProvider, token) =>
+                try
                 {
-                    await ProcessOperationAsync(serviceProvider, operation.Id, token);
-                });
+                    operation.MarkAsProcessing();
+                    await _repository.UpdateAsync(operation);
+                    _backgroundTaskQueue.QueueBackgroundWorkItem(async (serviceProvider, token) =>
+                    {
+                        await ProcessOperationAsync(serviceProvider, operation.Id, token);
+                    });
 
-                _logger.LogInformation(
-                "Operation submitted for processing. OperationId: {OperationId}",
-                operation.Id
-                );
+                    _logger.LogInformation(
+                    "Operation submitted for processing. OperationId: {OperationId}",
+                    operation.Id
+                    );
 
-                return new SubmitOperationResponse
+                    return new SubmitOperationResponse
+                    {
+                        Operation = MapToResponse(operation),
+                        IsNew = true
+                    };
+                }catch (DbUpdateConcurrencyException)
                 {
-                    Operation = MapToResponse(operation),
-                    IsNew = true
-                };
+                    _logger.LogWarning("Concurrent update detected for operation {OperationId}", operation.Id);
+
+                    operation = await _repository.GetByIdAsync(request.OperationId);
+                    if (operation == null)
+                    {
+                        throw new NotFoundException($"Operation {request.OperationId} not found");
+                    }
+
+                    return new SubmitOperationResponse
+                    {
+                        Operation = MapToResponse(operation),
+                        IsNew = false
+                    };
+                }
             }
 
             _logger.LogInformation(

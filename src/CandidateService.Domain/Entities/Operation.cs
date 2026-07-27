@@ -5,17 +5,17 @@ namespace CandidateService.Domain.Entities
     public class Operation
     {
         public string Id { get; private set; }
-        public decimal Amount { get; private set; }
-        public string Currency { get; private set; }
-        public string Description { get; private set; }
-        public OperationStatus Status { get; private set; }
+        public decimal Amount { get; set; }
+        public string Currency { get;  set; }
+        public string Description { get;  set; }
+        public OperationStatus Status { get;  set; }
         public string? ProviderPaymentId { get; set; }
-        public DateTime CreatedAt { get; private set; }
-        public DateTime? UpdatedAt { get; private set; }
-        public int RetryCount { get; private set; }
-        public DateTime? NextRetryAt { get; private set; }
+        public DateTime CreatedAt { get; set; }
+        public DateTime? UpdatedAt { get; set; }
+        public int RetryCount { get; set; }
+        public DateTime? NextRetryAt { get; set; }
         public bool IsProcessing { get; set; }
-        public List<OperationEvent> Events { get; private set; }
+        public List<OperationEvent> Events { get; set; }
 
         public Operation(string id, decimal amount, string currency, string description)
         {
@@ -94,7 +94,21 @@ namespace CandidateService.Domain.Entities
 
         private void AddEvent(OperationStatus toStatus, OperationStatus? fromStatus, string message)
         {
-            var eventId = Events.Any() ? Events.Max(e => e.EventId) + 1 : 1;
+            var eventId = 1;
+            if (Events.Any())
+            {
+                eventId = Events.Max(e => e.EventId) + 1;
+            }
+
+            if (Events.Any(e => e.EventId == eventId))
+            {
+                var existingIds = Events.Select(e => e.EventId).ToHashSet();
+                while (existingIds.Contains(eventId))
+                {
+                    eventId++;
+                }
+            }
+
             Events.Add(new OperationEvent(eventId, toStatus, fromStatus, message, DateTime.UtcNow));
         }
     }

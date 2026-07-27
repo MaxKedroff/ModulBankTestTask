@@ -4,7 +4,7 @@ namespace CandidateService.Domain.Entities
 {
     public class OperationEvent
     {
-        public int EventId { get; private set; }
+        public int EventId { get; set; }
         public string Type { get; private set; }
         public string? FromStatus { get; private set; }
         public string ToStatus { get; private set; }

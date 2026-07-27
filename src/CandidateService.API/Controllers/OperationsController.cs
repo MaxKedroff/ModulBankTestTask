@@ -4,6 +4,7 @@ using CandidateService.Application.Exceptions;
 using CandidateService.Application.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace CandidateService.API.Controllers
 {
@@ -81,6 +82,13 @@ namespace CandidateService.API.Controllers
                     return Accepted(result.Operation);
                 }
 
+                return Ok(result.Operation);
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                _logger.LogWarning("Concurrency conflict for operation {OperationId}", id);
+                var command = new SubmitOperationCommand { OperationId = id };
+                var result = await _mediator.Send(command);
                 return Ok(result.Operation);
             }
             catch (NotFoundException)
